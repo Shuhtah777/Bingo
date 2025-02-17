@@ -1,0 +1,14 @@
+td {
+  width: 60px;
+  height: 60px;
+  text-align: center;
+  font-size: 20px;
+  border: 1px solid black;
+  vertical-align: center;
+}
+table {
+  border-collapse: collapse;
+}
+.selected {
+  background-color: orange;
+}
