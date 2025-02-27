@@ -3,12 +3,62 @@ td {
   height: 60px;
   text-align: center;
   font-size: 20px;
-  border: 1px solid black;
+  border: 1px solid rgb(255, 255, 255);
   vertical-align: center;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 2px;
 }
+
 table {
-  border-collapse: collapse;
+  table-layout: fixed;
+  border-collapse: collapse; 
+  width: 30%
 }
+
+table td {
+  width: 60px;
+  height: 60px;
+  text-align: center;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px;
+  font-size: 20px;
+}
+
+body{
+  background-color: rgb(31, 31, 31);
+  color:white;
+}
+
 .selected {
   background-color: orange;
+  color:black;
+}
+
+.error {
+  background-color: red; 
+  color:black;
+}
+
+textarea.error {
+  border: 2px solid red;
+}
+
+#bingo-message {
+  display: none;
+  font-size: 24px;
+  font-weight: bold;
+  color: green;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 10px 5px;
+  background-color: rgb(10, 103, 209);
 }
