@@ -121,31 +121,34 @@ export function generateTable(num) {
   document.body.appendChild(shareButton);
 
   shareButton.addEventListener("click", () => {
-    const data = [];
+    const data = {
+        rows: num,
+        cols: num, 
+        cells: []
+    };
+
     table.querySelectorAll("tr").forEach(row => {
-      const rowData = [];
-      row.querySelectorAll("td").forEach(cell => {
-        rowData.push({
-          text: cell.textContent,
-          selected: cell.classList.contains("selected"),
-          error: cell.classList.contains("error"),
-          fontSize: cell.style.fontSize
+        row.querySelectorAll("td").forEach(cell => {
+            data.cells.push({
+                text: cell.textContent,
+                selected: cell.classList.contains("selected"),
+                error: cell.classList.contains("error"),
+                fontSize: cell.style.fontSize
+            });
         });
-      });
-      data.push(rowData);
     });
 
-    // Кодируем данные для URL
-    const encodedData = encodeURIComponent(JSON.stringify(data));
-    const url = `${window.location.origin}${window.location.pathname}?data=${encodedData}`;
+    const encodedData = btoa(encodeURIComponent(JSON.stringify(data)));
+    const url = `${window.location.href.split('#')[0]}${window.location.pathname}#${encodedData}`;
 
-    // Копируем URL в буфер обмена
+    console.log("Generated URL:", url);
+
     navigator.clipboard.writeText(url).then(() => {
-      alert("Посилання на гру скопійовано в буфер обміну!");
+        alert("Посилання на гру скопійовано в буфер обміну!");
     }).catch(err => {
-      console.error("Помилка копіювання: ", err);
+        console.error("Помилка копіювання: ", err);
     });
-  });
+});
 
   function saveTableState() {
     const data = [];
@@ -184,33 +187,51 @@ export function generateTable(num) {
     highlightDuplicates(table);
   }
 
-  function loadTableStateFromURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const encodedData = urlParams.get('data');
+  function loadTableStateFromURL(table) {
+    const encodedData = window.location.hash.substring(1);
+
 
     if (encodedData) {
-      try {
-        const data = JSON.parse(decodeURIComponent(encodedData));
+        try {
+            console.log("Encoded data from URL:", encodedData);
+          
+            const jsonData = atob(encodedData);
+            console.log("Decoded JSON string:", jsonData);
+            
+            const data = JSON.parse(decodeURIComponent(jsonData));
+            console.log("Parsed data:", data);
 
-        table.querySelectorAll("tr").forEach((row, i) => {
-          row.querySelectorAll("td").forEach((cell, j) => {
-            cell.textContent = data[i][j].text;
-            cell.style.fontSize = data[i][j].fontSize || "20px";
-            if (data[i][j].selected) {
-              cell.classList.add("selected");
+            if (data.rows && data.cols && data.cells) {
+                const tbody = table.querySelector("tbody");
+                tbody.innerHTML = "";
+
+                let cellIndex = 0;
+                for (let i = 0; i < data.rows; i++) {
+                    const tr = document.createElement("tr");
+                    for (let j = 0; j < data.cols; j++) {
+                        const td = document.createElement("td");
+                        const cellData = data.cells[cellIndex++];
+                        td.textContent = cellData.text;
+                        td.style.fontSize = cellData.fontSize || "20px";
+                        if (cellData.selected) td.classList.add("selected");
+                        if (cellData.error) td.classList.add("error");
+                        autoScaleText(td);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                }
+                highlightDuplicates(table);
+                console.log("Table successfully reconstructed from URL data.");
+            } else {
+                console.error("Invalid data structure:", data);
             }
-            if (data[i][j].error) {
-              cell.classList.add("error");
-            }
-            autoScaleText(cell);
-          });
-        });
-        highlightDuplicates(table);
-      } catch (error) {
-        console.error("Помилка завантаження стану з URL: ", error);
-      }
+        } catch (error) {
+            console.error("Ошибка загрузки состояния из URL: ", error);
+        }
     }
-  }
+}
+
+
 
   for (let i = 0; i < num; i++) {
     const tr = document.createElement("tr");
