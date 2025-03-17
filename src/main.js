@@ -1,5 +1,8 @@
-import './style.css'
-import { generateTable } from './counter.js'
 
-document.querySelector('#app').appendChild(generateTable(5));
-  
+import { generateTable } from "./counter.js";
+import "./style.css";
+
+
+
+document.querySelector("#app").appendChild(generateTable(7));
+

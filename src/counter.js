@@ -23,21 +23,68 @@ function autoScaleText(cell) {
   document.body.removeChild(tempDiv);
 }
 
-window.addEventListener("load", () => {
-  const cells = document.querySelectorAll("td");
-  cells.forEach(cell => autoScaleText(cell));
-});
+// Функція для створення фавіконки
+function createFavicon(color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 32;
+  canvas.height = 32;
+  const ctx = canvas.getContext("2d");
 
-window.addEventListener("resize", () => {
-  const cells = document.querySelectorAll("td");
-  cells.forEach(cell => autoScaleText(cell));
-});
+  // Малюємо квадрат заданого кольору
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, 32, 32);
+
+  // Створюємо посилання на фавіконку
+  const link = document.createElement("link");
+  link.rel = "icon";
+  link.href = canvas.toDataURL("image/png");
+  document.head.appendChild(link);
+}
+
+// Початкова фавіконка (жовта)
+createFavicon("yellow");
+
+// Функція для оновлення фавіконки
+function updateFavicon(state) {
+  let color;
+  switch (state) {
+    case "inProgress":
+      color = "yellow"; // Жовтий - бінго в процесі
+      break;
+    case "completed":
+      color = "green"; // Зелений - бінго завершено
+      break;
+    case "error":
+      color = "red"; // Червоний - бінго має помилки
+      break;
+    default:
+      color = "yellow"; // За замовчуванням - жовтий
+  }
+  createFavicon(color);
+}
+
+// Функція для оновлення стану клітинок з "*"
+function updateStarCells(table) {
+  const cells = table.querySelectorAll("td");
+  cells.forEach(cell => {
+    if (cell.textContent.trim() === "*") {
+      cell.classList.add("selected"); // Робимо клітинку обраною
+    }
+  });
+}
 
 function checkWin(table) {
   const rows = table.querySelectorAll("tr");
   const num = rows.length;
   const bingoMessage = document.getElementById("bingo-message");
   let hasBingo = false;
+  let hasErrors = false;
+
+  // Перевіряємо, чи є помилки (наприклад, дублікати)
+  const errorCells = table.querySelectorAll(".error");
+  if (errorCells.length > 0) {
+    hasErrors = true;
+  }
 
   function checkLine(cells) {
     return Array.from(cells).every(cell => cell.classList.contains("selected"));
@@ -62,16 +109,21 @@ function checkWin(table) {
 
   if (hasBingo && bingoMessage) {
     bingoMessage.style.display = "block";
+    updateFavicon("completed"); // Зелений - бінго завершено
+  } else if (hasErrors) {
+    updateFavicon("error"); // Червоний - бінго має помилки
+  } else {
+    updateFavicon("inProgress"); // Жовтий - бінго в процесі
   }
 }
-
 function highlightDuplicates(table) {
   const cells = table.querySelectorAll("td");
-  const valueMap = new Map();
+  const valueMap = new Map();   
 
   cells.forEach(cell => {
     if (cell.textContent.length <= 50) {
       cell.classList.remove("error");
+      updateFavicon("error")
     }
 
     const value = cell.textContent;
@@ -85,6 +137,7 @@ function highlightDuplicates(table) {
   valueMap.forEach(cellsArray => {
     if (cellsArray.length > 1) {
       cellsArray.forEach(cell => cell.classList.add("error"));
+      updateFavicon("error")
     }
   });
 }
@@ -112,6 +165,8 @@ export function generateTable(num) {
       table.querySelectorAll("td").forEach(td => td.classList.remove("selected"));
       if (bingoMessage) bingoMessage.style.display = "none";
     }
+  
+    updateStarCells(table); // Оновлюємо стан клітинок з "*" після зміни режиму
   });
 
   const shareButton = document.createElement("button");
@@ -121,125 +176,74 @@ export function generateTable(num) {
   document.body.appendChild(shareButton);
 
   shareButton.addEventListener("click", () => {
-    const data = {
-        rows: num,
-        cols: num, 
-        cells: []
-    };
-
-    table.querySelectorAll("tr").forEach(row => {
-        row.querySelectorAll("td").forEach(cell => {
-            data.cells.push({
-                text: cell.textContent,
-                selected: cell.classList.contains("selected"),
-                error: cell.classList.contains("error"),
-                fontSize: cell.style.fontSize
-            });
-        });
+    const selectedCells = [];
+    const cellTexts = [];
+  
+    table.querySelectorAll("td").forEach((cell, index) => {
+      if (cell.classList.contains("selected")) {
+        selectedCells.push(index);
+      }
+      cellTexts.push(cell.textContent);
     });
-
-    const encodedData = btoa(encodeURIComponent(JSON.stringify(data)));
-    const url = `${window.location.href.split('#')[0]}${window.location.pathname}#${encodedData}`;
-
-    console.log("Generated URL:", url);
-
-    navigator.clipboard.writeText(url).then(() => {
-        alert("Посилання на гру скопійовано в буфер обміну!");
+  
+    // Кодируем данные в Base64
+    const state = { selected: selectedCells, texts: cellTexts };
+    const encodedState = btoa(JSON.stringify(state));
+  
+    // Обновляем hash в URL
+    window.location.hash = encodedState;
+  
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      alert("Посилання на гру скопійовано в буфер обміну!");
     }).catch(err => {
-        console.error("Помилка копіювання: ", err);
+      console.error("Помилка копіювання: ", err);
     });
-});
-
-  function saveTableState() {
-    const data = [];
-    table.querySelectorAll("tr").forEach(row => {
-      const rowData = [];
-      row.querySelectorAll("td").forEach(cell => {
-        rowData.push({
-          text: cell.textContent,
-          selected: cell.classList.contains("selected"),
-          error: cell.classList.contains("error"),
-          fontSize: cell.style.fontSize
-        });
-      });
-      data.push(rowData);
-    });
-    localStorage.setItem("bingoTable", JSON.stringify(data));
-  }
-
-  function loadTableState() {
-    const savedData = JSON.parse(localStorage.getItem("bingoTable"));
-    if (!savedData) return;
-
-    table.querySelectorAll("tr").forEach((row, i) => {
-      row.querySelectorAll("td").forEach((cell, j) => {
-        cell.textContent = savedData[i][j].text;
-        cell.style.fontSize = savedData[i][j].fontSize || "20px";
-        if (savedData[i][j].selected) {
-          cell.classList.add("selected");
-        }
-        if (savedData[i][j].error) {
-          cell.classList.add("error");
-        }
-        autoScaleText(cell);
-      });
-    });
-    highlightDuplicates(table);
-  }
-
+  });
+  
   function loadTableStateFromURL(table) {
-    const encodedData = window.location.hash.substring(1);
-
-
-    if (encodedData) {
-        try {
-            console.log("Encoded data from URL:", encodedData);
-          
-            const jsonData = atob(encodedData);
-            console.log("Decoded JSON string:", jsonData);
-            
-            const data = JSON.parse(decodeURIComponent(jsonData));
-            console.log("Parsed data:", data);
-
-            if (data.rows && data.cols && data.cells) {
-                const tbody = table.querySelector("tbody");
-                tbody.innerHTML = "";
-
-                let cellIndex = 0;
-                for (let i = 0; i < data.rows; i++) {
-                    const tr = document.createElement("tr");
-                    for (let j = 0; j < data.cols; j++) {
-                        const td = document.createElement("td");
-                        const cellData = data.cells[cellIndex++];
-                        td.textContent = cellData.text;
-                        td.style.fontSize = cellData.fontSize || "20px";
-                        if (cellData.selected) td.classList.add("selected");
-                        if (cellData.error) td.classList.add("error");
-                        autoScaleText(td);
-                        tr.appendChild(td);
-                    }
-                    tbody.appendChild(tr);
-                }
-                highlightDuplicates(table);
-                console.log("Table successfully reconstructed from URL data.");
-            } else {
-                console.error("Invalid data structure:", data);
-            }
-        } catch (error) {
-            console.error("Ошибка загрузки состояния из URL: ", error);
-        }
+    if (!table) {
+      console.error("Table is undefined. Cannot load state.");
+      return;
     }
-}
+  
+    const encodedData = window.location.hash.substring(1); // Убираем #
+  
+    if (encodedData) {
+      try {
+        console.log("Encoded data from URL:", encodedData);
+  
+        // Декодируем данные
+        const state = JSON.parse(atob(encodedData));
+        console.log("Parsed state:", state);
+  
+        // Восстанавливаем состояние
+        table.querySelectorAll("td").forEach((cell, index) => {
+          const cellData = state.texts[index];
+          if (cellData !== undefined) {
+            cell.textContent = cellData;
+            if (state.selected.includes(index)) {
+              cell.classList.add("selected");
+            }
+          }
+        });
+  
+        console.log("Table state successfully restored from URL.");
+      } catch (error) {
+        console.error("Ошибка загрузки состояния из URL: ", error);
+        alert("Помилка: Невірний формат даних у посиланні.");
+      }
+    } else {
+      console.log("No data in URL. Creating a new table.");
+    }
+  }
 
-
-
+  let counter = 0;
   for (let i = 0; i < num; i++) {
     const tr = document.createElement("tr");
     for (let j = 0; j < num; j++) {
       const td = document.createElement("td");
-      td.textContent = i * num + j;
+      td.textContent = counter++;
       tr.appendChild(td);
-
       autoScaleText(td);
 
       td.addEventListener("click", () => {
@@ -250,59 +254,72 @@ export function generateTable(num) {
           td.textContent = "";
           td.appendChild(textarea);
           textarea.focus();
-
+     
           textarea.addEventListener("input", () => {
             if (textarea.value.length > 50) {
               textarea.classList.add("error");
+              updateFavicon('error');
             } else {
               textarea.classList.remove("error");
+              updateFavicon('inProgress');
             }
             autoScaleText(td);
           });
-
+      
           textarea.addEventListener("blur", () => {
             const value = textarea.value;
             td.textContent = value;
-
+      
             autoScaleText(td);
-
+      
             if (value.length > 50) {
               td.classList.add("error");
+              updateFavicon('error');
             } else {
               td.classList.remove("error");
+              updateFavicon('inProgress');
             }
-
+      
+            // Перевіряємо, чи вміст клітинки дорівнює "*"
+            if (td.textContent.trim() === "*") {
+              td.classList.add("selected");
+            }
+            
             highlightDuplicates(table);
             isEditing = false;
-            saveTableState();
           });
-
+      
           textarea.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
               textarea.blur();
             }
           });
         } else {
-          td.classList.toggle("selected");
-          checkWin(table);
-          saveTableState();
+          // Обробляємо клітинку з "*" у режимі вибору
+          if (td.textContent.trim() === "*") {
+            td.classList.add("selected"); // Якщо вміст "*", клітинка завжди обрана
+          } else {
+            td.classList.toggle("selected"); // Інакше перемикаємо стан
+          }
+          checkWin(table); // Перевіряємо перемогу
         }
       });
     }
     tbody.appendChild(tr);
   }
 
-  loadTableState();
-  loadTableStateFromURL();
+  loadTableStateFromURL(table);
 
   window.addEventListener("load", () => {
     const cells = table.querySelectorAll("td");
     cells.forEach(cell => autoScaleText(cell));
+    updateStarCells(table); // Оновлюємо стан клітинок з "*"
   });
 
   window.addEventListener("resize", () => {
     const cells = table.querySelectorAll("td");
     cells.forEach(cell => autoScaleText(cell));
+    updateStarCells(table); // Оновлюємо стан клітинок з "*"
   });
 
   window.addEventListener("beforeunload", (event) => {
@@ -340,8 +357,10 @@ export function generateTable(num) {
       td.classList.remove("selected");
       autoScaleText(td);
     });
-    bingoMessage.style.display = "none";
-    saveTableState();
+    updateStarCells(table); // Оновлюємо стан клітинок з "*"
+    const bingoMessage = document.getElementById("bingo-message");
+    if (bingoMessage) bingoMessage.style.display = "none";
+    updateFavicon("inProgress");
   });
 
   document.body.appendChild(editButton);

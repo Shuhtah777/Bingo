@@ -12,9 +12,9 @@ td {
 }
 
 table {
-  table-layout: fixed;
-  border-collapse: collapse; 
-  width: 30%
+
+  width: auto;
+  max-width: 80%;
 }
 
 table td {
