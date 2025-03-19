@@ -1,3 +1,8 @@
+// counter.js
+
+import {  updateFavicon, createFavicon, updateStarCells, highlightDuplicates } from './logic.js';
+
+// Функция для автоматического масштабирования текста
 function autoScaleText(cell) {
   const maxWidth = cell.clientWidth - 4;
   const maxHeight = cell.clientHeight - 4;
@@ -23,64 +28,12 @@ function autoScaleText(cell) {
   document.body.removeChild(tempDiv);
 }
 
-// Функція для створення фавіконки
-function createFavicon(color) {
-  const canvas = document.createElement("canvas");
-  canvas.width = 32;
-  canvas.height = 32;
-  const ctx = canvas.getContext("2d");
-
-  // Малюємо квадрат заданого кольору
-  ctx.fillStyle = color;
-  ctx.fillRect(0, 0, 32, 32);
-
-  // Створюємо посилання на фавіконку
-  const link = document.createElement("link");
-  link.rel = "icon";
-  link.href = canvas.toDataURL("image/png");
-  document.head.appendChild(link);
-}
-
-// Початкова фавіконка (жовта)
-createFavicon("yellow");
-
-// Функція для оновлення фавіконки
-function updateFavicon(state) {
-  let color;
-  switch (state) {
-    case "inProgress":
-      color = "yellow"; // Жовтий - бінго в процесі
-      break;
-    case "completed":
-      color = "green"; // Зелений - бінго завершено
-      break;
-    case "error":
-      color = "red"; // Червоний - бінго має помилки
-      break;
-    default:
-      color = "yellow"; // За замовчуванням - жовтий
-  }
-  createFavicon(color);
-}
-
-// Функція для оновлення стану клітинок з "*"
-function updateStarCells(table) {
-  const cells = table.querySelectorAll("td");
-  cells.forEach(cell => {
-    if (cell.textContent.trim() === "*") {
-      cell.classList.add("selected"); // Робимо клітинку обраною
-    }
-  });
-}
-
-function checkWin(table) {
+export function checkWin(table) {
   const rows = table.querySelectorAll("tr");
   const num = rows.length;
-  const bingoMessage = document.getElementById("bingo-message");
   let hasBingo = false;
   let hasErrors = false;
 
-  // Перевіряємо, чи є помилки (наприклад, дублікати)
   const errorCells = table.querySelectorAll(".error");
   if (errorCells.length > 0) {
     hasErrors = true;
@@ -107,40 +60,12 @@ function checkWin(table) {
     hasBingo = true;
   }
 
-  if (hasBingo && bingoMessage) {
-    bingoMessage.style.display = "block";
-    updateFavicon("completed"); // Зелений - бінго завершено
-  } else if (hasErrors) {
-    updateFavicon("error"); // Червоний - бінго має помилки
-  } else {
-    updateFavicon("inProgress"); // Жовтий - бінго в процесі
-  }
+  return { hasBingo, hasErrors };
 }
-function highlightDuplicates(table) {
-  const cells = table.querySelectorAll("td");
-  const valueMap = new Map();   
 
-  cells.forEach(cell => {
-    if (cell.textContent.length <= 50) {
-      cell.classList.remove("error");
-      updateFavicon("error")
-    }
 
-    const value = cell.textContent;
-    if (valueMap.has(value)) {
-      valueMap.get(value).push(cell);
-    } else {
-      valueMap.set(value, [cell]);
-    }
-  });
-
-  valueMap.forEach(cellsArray => {
-    if (cellsArray.length > 1) {
-      cellsArray.forEach(cell => cell.classList.add("error"));
-      updateFavicon("error")
-    }
-  });
-}
+// Початкова фавіконка (жовта)
+createFavicon("yellow");
 
 export function generateTable(num) {
   const table = document.createElement("table");
@@ -301,7 +226,18 @@ export function generateTable(num) {
           } else {
             td.classList.toggle("selected"); // Інакше перемикаємо стан
           }
-          checkWin(table); // Перевіряємо перемогу
+          const { hasBingo, hasErrors } = checkWin(table); // Перевіряємо перемогу
+          if (hasBingo) {
+            const bingoMessage = document.getElementById("bingo-message");
+            if (bingoMessage) {
+              bingoMessage.style.display = "block";
+              updateFavicon("completed"); // Зелений - бінго завершено
+            }
+          } else if (hasErrors) {
+            updateFavicon("error"); // Червоний - бінго має помилки
+          } else {
+            updateFavicon("inProgress"); // Жовтий - бінго в процесі
+          }
         }
       });
     }
